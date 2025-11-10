@@ -290,6 +290,41 @@ router.get('/auth/:platform/callback', async (req: Request, res: Response) => {
       });
     }
 
+    // Create or update social link for display on profile
+    const existingLinks = await storage.getSocialLinks(stateData.profileId);
+    const existingLink = existingLinks.find(link => link.platform === platform);
+
+    // Generate platform URL
+    let platformUrl = '';
+    switch (platform) {
+      case 'instagram':
+        platformUrl = `https://instagram.com/${username.replace('@', '')}`;
+        break;
+      case 'twitter':
+        platformUrl = `https://twitter.com/${username.replace('@', '')}`;
+        break;
+      case 'linkedin':
+        platformUrl = `https://linkedin.com/in/${username.toLowerCase().replace(/\s+/g, '-')}`;
+        break;
+      case 'github':
+        platformUrl = `https://github.com/${username}`;
+        break;
+      case 'youtube':
+        platformUrl = `https://youtube.com/@${username.replace('@', '')}`;
+        break;
+    }
+
+    if (!existingLink && platformUrl) {
+      const maxOrder = existingLinks.reduce((max, link) => Math.max(max, link.order), 0);
+      await storage.createSocialLink({
+        profileId: stateData.profileId,
+        platform,
+        url: platformUrl,
+        displayText: username.startsWith('@') ? username : `@${username}`,
+        order: maxOrder + 1,
+      });
+    }
+
     // Redirect back to home with success
     res.redirect('/?connected=' + platform);
   } catch (error: any) {

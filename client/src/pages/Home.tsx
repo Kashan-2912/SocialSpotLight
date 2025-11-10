@@ -6,15 +6,19 @@ import QRCodeDialog from "@/components/QRCodeDialog";
 import AnimatedBackground from "@/components/AnimatedBackground";
 import { Button } from "@/components/ui/button";
 import { BarChart3 } from "lucide-react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import type { Profile, SocialLink } from "@shared/schema";
 import { Link } from "wouter";
+import { useToast } from "@/hooks/use-toast";
 
 const PROFILE_ID = "default-profile";
 
 export default function Home() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
   const { data: profile, isLoading: profileLoading } = useQuery<Profile>({
     queryKey: ["/api/profile", PROFILE_ID],
     queryFn: async () => {
@@ -55,6 +59,37 @@ export default function Home() {
 
   useEffect(() => {
     trackPageView.mutate();
+
+    // Check for OAuth callback success
+    const urlParams = new URLSearchParams(window.location.search);
+    const connectedPlatform = urlParams.get('connected');
+    const error = urlParams.get('error');
+    const errorDesc = urlParams.get('desc');
+
+    if (connectedPlatform) {
+      // Invalidate queries to refresh both connected accounts and links
+      queryClient.invalidateQueries({ queryKey: ["/api/connected-accounts", PROFILE_ID] });
+      queryClient.invalidateQueries({ queryKey: ["/api/profile", PROFILE_ID, "links"] });
+
+      // Show success toast
+      toast({
+        title: "Account Connected!",
+        description: `Successfully connected ${connectedPlatform}`,
+      });
+
+      // Clean up URL
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (error) {
+      // Show error toast
+      toast({
+        title: "Connection Failed",
+        description: errorDesc || `Failed to connect: ${error}`,
+        variant: "destructive",
+      });
+
+      // Clean up URL
+      window.history.replaceState({}, '', window.location.pathname);
+    }
   }, []);
 
   if (profileLoading || linksLoading) {
