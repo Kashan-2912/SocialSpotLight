@@ -1,4 +1,5 @@
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { motion } from "framer-motion";
 
 interface ProfileHeaderProps {
   name: string;
@@ -16,19 +17,60 @@ export default function ProfileHeader({ name, bio, avatarUrl }: ProfileHeaderPro
 
   return (
     <div className="flex flex-col items-center text-center py-12">
-      <Avatar className="w-24 h-24 md:w-30 md:h-30 mb-6 ring-2 ring-border shadow-md">
-        <AvatarImage src={avatarUrl} alt={name} />
-        <AvatarFallback className="text-2xl font-bold bg-primary text-primary-foreground">
-          {initials}
-        </AvatarFallback>
-      </Avatar>
-      <h1 className="text-2xl md:text-3xl font-bold mb-4 text-foreground" data-testid="text-profile-name">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="relative mb-6"
+      >
+        {/* Glass backdrop for avatar */}
+        <div className="absolute inset-0 rounded-full glass-strong scale-110 -z-10" />
+
+        {/* Animated glow ring */}
+        <motion.div
+          className="absolute inset-0 rounded-full opacity-50 -z-20"
+          style={{
+            background: "conic-gradient(from 0deg, hsl(var(--primary)), hsl(var(--chart-2)), hsl(var(--primary)))",
+            filter: "blur(20px)",
+          }}
+          animate={{
+            rotate: 360,
+          }}
+          transition={{
+            duration: 8,
+            repeat: Infinity,
+            ease: "linear",
+          }}
+        />
+
+        <Avatar className="w-28 h-28 md:w-32 md:h-32 ring-4 ring-background shadow-2xl">
+          <AvatarImage src={avatarUrl} alt={name} />
+          <AvatarFallback className="text-3xl font-bold bg-primary text-primary-foreground">
+            {initials}
+          </AvatarFallback>
+        </Avatar>
+      </motion.div>
+
+      <motion.h1
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.1 }}
+        className="text-3xl md:text-4xl font-bold mb-4 text-foreground tracking-tight"
+        data-testid="text-profile-name"
+      >
         {name}
-      </h1>
+      </motion.h1>
+
       {bio && (
-        <p className="text-base text-muted-foreground max-w-md leading-relaxed px-4" data-testid="text-profile-bio">
+        <motion.p
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="text-base md:text-lg text-muted-foreground max-w-md leading-relaxed px-4"
+          data-testid="text-profile-bio"
+        >
           {bio}
-        </p>
+        </motion.p>
       )}
     </div>
   );

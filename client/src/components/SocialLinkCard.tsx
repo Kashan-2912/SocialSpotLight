@@ -1,4 +1,3 @@
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -19,8 +18,9 @@ import {
 } from "lucide-react";
 import { SiTiktok, SiSpotify, SiTwitch, SiFacebook } from "react-icons/si";
 import { useState } from "react";
+import { motion } from "framer-motion";
 import { apiRequest } from "@/lib/queryClient";
-import { differenceInDays, formatDistanceToNow } from "date-fns";
+import { differenceInDays } from "date-fns";
 
 interface SocialLinkCardProps {
   id: string;
@@ -116,22 +116,45 @@ export default function SocialLinkCard({
   };
 
   return (
-    <Card
-      className={`group cursor-pointer hover-elevate active-elevate-2 transition-all duration-200 hover:shadow-md overflow-visible ${
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      whileHover={{ y: -4, scale: 1.01 }}
+      whileTap={{ scale: 0.99 }}
+      transition={{ duration: 0.2, ease: "easeOut" }}
+      className={`glass glass-hover group cursor-pointer relative overflow-visible ${
         isExpired ? "opacity-60" : ""
       }`}
       onClick={handleClick}
       data-testid={`card-social-${platform.toLowerCase()}`}
     >
-      <div className="flex items-center gap-4 p-6">
-        <div className="flex items-center justify-center w-12 h-12 rounded-full bg-muted flex-shrink-0">
-          <Icon className={`w-6 h-6 ${config.color}`} />
-        </div>
+      {/* Subtle gradient accent */}
+      <div
+        className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10"
+        style={{
+          background: `radial-gradient(circle at top left, ${config.color}15, transparent 60%)`,
+        }}
+      />
+
+      <div className="flex items-center gap-4 p-6 relative">
+        {/* Icon container with glass effect */}
+        <motion.div
+          whileHover={{ scale: 1.1, rotate: 5 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+          className="relative flex items-center justify-center w-14 h-14 rounded-2xl glass flex-shrink-0"
+        >
+          {/* Icon glow effect */}
+          <div
+            className="absolute inset-0 rounded-2xl opacity-20 blur-xl"
+            style={{ backgroundColor: config.color }}
+          />
+          <Icon className={`w-7 h-7 ${config.color} relative z-10`} />
+        </motion.div>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <h3
-              className="text-lg font-medium text-foreground truncate"
+              className="text-lg font-semibold text-foreground truncate"
               data-testid={`text-platform-${platform.toLowerCase()}`}
             >
               {displayText}
@@ -142,21 +165,26 @@ export default function SocialLinkCard({
               </Badge>
             )}
             {!isExpired && daysUntilExpiry !== null && daysUntilExpiry <= 7 && (
-              <Badge variant="secondary" className="text-xs">
+              <Badge variant="secondary" className="text-xs glass">
                 <Clock className="w-3 h-3 mr-1" />
                 {daysUntilExpiry}d left
               </Badge>
             )}
           </div>
           <div className="flex items-center gap-3 text-sm text-muted-foreground">
-            <span className="truncate">
+            <span className="truncate font-medium">
               {platform.charAt(0).toUpperCase() + platform.slice(1)}
             </span>
             {localClickCount > 0 && (
-              <span className="flex items-center gap-1" data-testid={`text-clicks-${id}`}>
+              <motion.span
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                className="flex items-center gap-1 glass px-2 py-0.5 rounded-full"
+                data-testid={`text-clicks-${id}`}
+              >
                 <Eye className="w-3 h-3" />
-                {localClickCount.toLocaleString()} clicks
-              </span>
+                {localClickCount.toLocaleString()}
+              </motion.span>
             )}
           </div>
         </div>
@@ -166,7 +194,7 @@ export default function SocialLinkCard({
             size="icon"
             variant="ghost"
             onClick={handleCopy}
-            className="opacity-0 group-hover:opacity-100 transition-opacity"
+            className="opacity-0 group-hover:opacity-100 transition-all glass hover:scale-110"
             data-testid={`button-copy-${platform.toLowerCase()}`}
           >
             {copied ? (
@@ -176,9 +204,14 @@ export default function SocialLinkCard({
             )}
           </Button>
 
-          <ExternalLink className="w-5 h-5 text-muted-foreground" />
+          <motion.div
+            animate={{ x: [0, 3, 0] }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+          >
+            <ExternalLink className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+          </motion.div>
         </div>
       </div>
-    </Card>
+    </motion.div>
   );
 }

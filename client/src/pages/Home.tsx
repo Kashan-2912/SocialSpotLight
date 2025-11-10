@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { BarChart3 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
+import { motion } from "framer-motion";
 import { apiRequest } from "@/lib/queryClient";
 import type { Profile, SocialLink } from "@shared/schema";
 import { Link } from "wouter";
@@ -116,18 +117,28 @@ export default function Home() {
   const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
 
   return (
-    <div className="min-h-screen bg-background relative">
+    <div className="min-h-screen bg-background relative overflow-hidden">
       <AnimatedBackground />
-      <div className="absolute top-4 right-4 md:top-6 md:right-6 flex items-center gap-2 z-10">
-        <QRCodeDialog url={currentUrl} title={profile.name} />
-        <Link href="/analytics">
-          <Button variant="ghost" size="icon" data-testid="button-analytics">
-            <BarChart3 className="h-5 w-5" />
-          </Button>
-        </Link>
-        <ThemeToggle />
-      </div>
 
+      {/* Floating action buttons with glass effect */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="absolute top-4 right-4 md:top-6 md:right-6 flex items-center gap-2 z-10"
+      >
+        <div className="glass p-1 rounded-2xl flex items-center gap-1">
+          <QRCodeDialog url={currentUrl} title={profile.name} />
+          <Link href="/analytics">
+            <Button variant="ghost" size="icon" className="hover-elevate" data-testid="button-analytics">
+              <BarChart3 className="h-5 w-5" />
+            </Button>
+          </Link>
+          <ThemeToggle />
+        </div>
+      </motion.div>
+
+      {/* Main content container */}
       <div className="max-w-2xl mx-auto px-6 md:px-8 py-8 relative z-0">
         <ProfileHeader
           name={profile.name}
@@ -135,32 +146,57 @@ export default function Home() {
           avatarUrl={profile.avatarUrl || ""}
         />
 
-        <div className="space-y-4 pb-8" data-testid="container-social-links">
+        {/* Social links section with staggered animations */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.4 }}
+          className="space-y-4 pb-8"
+          data-testid="container-social-links"
+        >
           {links.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <p>No links available yet</p>
-            </div>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3 }}
+              className="text-center py-12 glass rounded-2xl"
+            >
+              <p className="text-muted-foreground">No links available yet</p>
+            </motion.div>
           ) : (
-            links.map((link) => (
-              <SocialLinkCard
+            links.map((link, index) => (
+              <motion.div
                 key={link.id}
-                id={link.id}
-                platform={link.platform}
-                url={link.url}
-                displayText={link.displayText}
-                clickCount={link.clickCount}
-                expiresAt={link.expiresAt}
-                onClickTracked={() => refetchLinks()}
-              />
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: index * 0.1 }}
+              >
+                <SocialLinkCard
+                  id={link.id}
+                  platform={link.platform}
+                  url={link.url}
+                  displayText={link.displayText}
+                  clickCount={link.clickCount}
+                  expiresAt={link.expiresAt}
+                  onClickTracked={() => refetchLinks()}
+                />
+              </motion.div>
             ))
           )}
-        </div>
+        </motion.div>
 
         <SocialStats profileId={PROFILE_ID} />
 
-        <footer className="text-center py-6 text-sm text-muted-foreground">
-          <p>Made with ❤️ using Link in Bio</p>
-        </footer>
+        <motion.footer
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 1 }}
+          className="text-center py-8 text-sm text-muted-foreground"
+        >
+          <div className="glass inline-block px-6 py-3 rounded-full">
+            <p>Made with ❤️ using Link in Bio</p>
+          </div>
+        </motion.footer>
       </div>
     </div>
   );
