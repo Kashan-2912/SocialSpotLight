@@ -240,7 +240,12 @@ router.get('/auth/:platform/callback', async (req: Request, res: Response) => {
         accountId = userInfo.data?.id || userInfo.id || '';
         break;
       case 'linkedin':
-        username = userInfo.name || userInfo.given_name || 'LinkedIn User';
+        // OpenID Connect returns: given_name, family_name, name, sub
+        // v2 API returns: localizedFirstName, localizedLastName, id
+        username = userInfo.name ||
+                   `${userInfo.given_name || ''} ${userInfo.family_name || ''}`.trim() ||
+                   `${userInfo.localizedFirstName || ''} ${userInfo.localizedLastName || ''}`.trim() ||
+                   'LinkedIn User';
         accountId = userInfo.sub || userInfo.id || '';
         break;
       case 'github':
