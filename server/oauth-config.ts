@@ -15,7 +15,7 @@ export interface OAuthConfig {
   additionalAuthParams?: Record<string, string>;
 }
 
-const BASE_URL = process.env.BASE_URL || 'http://localhost:5000';
+const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 
 export const OAUTH_CONFIGS: Record<string, OAuthConfig> = {
   instagram: {

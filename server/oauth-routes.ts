@@ -5,6 +5,9 @@ import { randomUUID, createHash } from 'crypto';
 
 const router = Router();
 
+// Frontend URL for OAuth redirects
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5000';
+
 // Store pending OAuth states temporarily
 const pendingStates = new Map<
   string,
@@ -128,24 +131,24 @@ router.get('/auth/:platform/callback', async (req: Request, res: Response) => {
     if (error) {
       console.error(`OAuth error from ${platform}:`, error, error_description);
       return res.redirect(
-        `/?error=${encodeURIComponent(error as string)}&desc=${encodeURIComponent((error_description as string) || '')}`
+        `${FRONTEND_URL}/?error=${encodeURIComponent(error as string)}&desc=${encodeURIComponent((error_description as string) || '')}`
       );
     }
 
     if (!code || !state) {
-      return res.redirect('/?error=missing_code_or_state');
+      return res.redirect(`${FRONTEND_URL}/?error=missing_code_or_state`);
     }
 
     // Verify state
     const stateData = pendingStates.get(state as string);
     if (!stateData || stateData.platform !== platform) {
-      return res.redirect('/?error=invalid_state');
+      return res.redirect(`${FRONTEND_URL}/?error=invalid_state`);
     }
     pendingStates.delete(state as string);
 
     const config = getOAuthConfig(platform);
     if (!config) {
-      return res.redirect('/?error=invalid_platform');
+      return res.redirect(`${FRONTEND_URL}/?error=invalid_platform`);
     }
 
     // Prepare token request body
@@ -188,7 +191,7 @@ router.get('/auth/:platform/callback', async (req: Request, res: Response) => {
     if (!tokenResponse.ok) {
       const errorText = await tokenResponse.text();
       console.error(`Token exchange failed for ${platform}:`, errorText);
-      return res.redirect(`/?error=token_exchange_failed&platform=${platform}`);
+      return res.redirect(`${FRONTEND_URL}/?error=token_exchange_failed&platform=${platform}`);
     }
 
     const tokenData = await tokenResponse.json();
@@ -198,7 +201,7 @@ router.get('/auth/:platform/callback', async (req: Request, res: Response) => {
 
     if (!accessToken) {
       console.error(`No access token received for ${platform}:`, tokenData);
-      return res.redirect('/?error=no_access_token');
+      return res.redirect(`${FRONTEND_URL}/?error=no_access_token`);
     }
 
     // Fetch user info
@@ -220,7 +223,7 @@ router.get('/auth/:platform/callback', async (req: Request, res: Response) => {
     if (!userInfoResponse.ok) {
       const errorText = await userInfoResponse.text();
       console.error(`User info fetch failed for ${platform}:`, errorText);
-      return res.redirect(`/?error=user_info_failed&platform=${platform}`);
+      return res.redirect(`${FRONTEND_URL}/?error=user_info_failed&platform=${platform}`);
     }
 
     const userInfo = await userInfoResponse.json();
@@ -255,6 +258,41 @@ router.get('/auth/:platform/callback', async (req: Request, res: Response) => {
       case 'youtube':
         username = userInfo.name || 'YouTube User';
         accountId = userInfo.id || '';
+
+        // Fetch YouTube channel information
+        try {
+          const channelResponse = await fetch(
+            'https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true',
+            {
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+              },
+            }
+          );
+
+          console.log('YouTube channel API response status:', channelResponse.status);
+
+          if (channelResponse.ok) {
+            const channelData = await channelResponse.json();
+            console.log('YouTube channel data:', JSON.stringify(channelData, null, 2));
+
+            if (channelData.items && channelData.items.length > 0) {
+              const channel = channelData.items[0];
+              // Store channel ID in accountId for later URL generation
+              accountId = channel.id || accountId;
+              username = channel.snippet?.title || username;
+              console.log('✅ YouTube channel found - ID:', accountId, 'Name:', username);
+            } else {
+              console.log('⚠️  No YouTube channel found for this account');
+            }
+          } else {
+            const errorText = await channelResponse.text();
+            console.error('❌ YouTube channel API error:', errorText);
+          }
+        } catch (error) {
+          console.error('❌ Failed to fetch YouTube channel:', error);
+          // Continue with basic userInfo if channel fetch fails
+        }
         break;
       default:
         username = 'Unknown';
@@ -263,7 +301,7 @@ router.get('/auth/:platform/callback', async (req: Request, res: Response) => {
 
     if (!accountId) {
       console.error(`Could not extract account ID for ${platform}:`, userInfo);
-      return res.redirect(`/?error=invalid_user_data&platform=${platform}`);
+      return res.redirect(`${FRONTEND_URL}/?error=invalid_user_data&platform=${platform}`);
     }
 
     // Check if account already connected
@@ -318,7 +356,14 @@ router.get('/auth/:platform/callback', async (req: Request, res: Response) => {
         platformUrl = `https://github.com/${username}`;
         break;
       case 'youtube':
-        platformUrl = `https://youtube.com/@${username.replace('@', '')}`;
+        // Use channel URL if channel exists, otherwise just youtube.com
+        if (accountId && accountId.startsWith('UC')) {
+          // accountId is a YouTube channel ID (starts with UC)
+          platformUrl = `https://youtube.com/channel/${accountId}`;
+        } else {
+          // No channel exists, use base YouTube URL
+          platformUrl = 'https://youtube.com';
+        }
         break;
     }
 
@@ -334,10 +379,10 @@ router.get('/auth/:platform/callback', async (req: Request, res: Response) => {
     }
 
     // Redirect back to home with success
-    res.redirect('/?connected=' + platform);
+    res.redirect(`${FRONTEND_URL}/?connected=${platform}`);
   } catch (error: any) {
     console.error('OAuth callback error:', error);
-    res.redirect('/?error=callback_error');
+    res.redirect(`${FRONTEND_URL}/?error=callback_error`);
   }
 });
 

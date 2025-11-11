@@ -1,10 +1,17 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
+import { log } from "./vite";
 import cookieParser from "cookie-parser";
+import cors from "cors";
 import { initializeDefaultProfile } from "./init";
 
 const app = express();
+
+// CORS configuration to allow frontend on localhost:5000
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:5000',
+  credentials: true,
+}));
 
 app.use(cookieParser());
 
@@ -65,20 +72,13 @@ app.use((req, res, next) => {
     throw err;
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
-  }
+  // Frontend is now served separately by Vite dev server on port 5000
+  // Backend (port 3000) only serves API routes
+  // Vite setup removed to prevent serving UI from backend
 
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || "5000", 10);
+  // Backend API server port (default 3000)
+  // Frontend runs separately on port 5000 (Vite dev server)
+  const port = parseInt(process.env.PORT || "3000", 10);
   const preferredHost = 'localhost';
   const fallbackHost = "127.0.0.1";
 
