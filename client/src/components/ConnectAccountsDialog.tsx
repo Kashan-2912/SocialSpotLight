@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, CheckCircle2, Settings } from "lucide-react";
+import { Loader2, CheckCircle2, Settings, X } from "lucide-react";
 import {
   FaInstagram,
   FaTwitter,
@@ -102,6 +102,35 @@ export default function ConnectAccountsDialog({
       });
       onAccountConnected?.();
       setOpen(false);
+    },
+  });
+
+  const disconnectAccount = useMutation({
+    mutationFn: async (platformId: string) => {
+      const response = await fetch(`/api/disconnect/${platformId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ profileId }),
+      });
+      if (!response.ok) throw new Error("Failed to disconnect");
+      return response.json();
+    },
+    onSuccess: (_, platformId) => {
+      // Invalidate queries to refetch data
+      queryClient.invalidateQueries({ queryKey: ["/api/connected-accounts", profileId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/profile", profileId, "links"] });
+      toast({
+        title: "Disconnected",
+        description: "Account disconnected successfully!",
+      });
+      onAccountConnected?.();
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to disconnect account",
+        variant: "destructive",
+      });
     },
   });
 
@@ -259,9 +288,25 @@ export default function ConnectAccountsDialog({
                         @{account.username}
                       </span>
                     </div>
-                    <Badge variant="secondary" className="text-xs">
-                      Connected
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="text-xs">
+                        Connected
+                      </Badge>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => disconnectAccount.mutate(account.platform)}
+                        disabled={disconnectAccount.isPending}
+                        title="Disconnect account"
+                      >
+                        {disconnectAccount.isPending ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <X className="h-3 w-3" />
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 );
               })}

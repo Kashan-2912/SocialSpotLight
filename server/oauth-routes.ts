@@ -416,4 +416,105 @@ router.post('/social-links/manual', async (req: Request, res: Response) => {
   }
 });
 
+// Disconnect OAuth account
+router.post('/disconnect/:platform', async (req: Request, res: Response) => {
+  try {
+    const { platform } = req.params;
+    const { profileId } = req.body;
+
+    if (!profileId) {
+      return res.status(400).json({ message: 'Missing profileId' });
+    }
+
+    // Get the connected account
+    const connectedAccount = await storage.getConnectedAccount(profileId, platform);
+
+    if (!connectedAccount) {
+      return res.status(404).json({ message: 'Account not connected' });
+    }
+
+    const config = getOAuthConfig(platform);
+
+    // Revoke OAuth token if the platform supports it
+    if (config && connectedAccount.accessToken) {
+      try {
+        let revokeUrl = '';
+        let revokeMethod = 'POST';
+        let revokeBody: Record<string, string> = {};
+        let revokeHeaders: Record<string, string> = {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        };
+
+        switch (platform) {
+          case 'github':
+            // GitHub: DELETE request to revoke token
+            revokeUrl = `https://api.github.com/applications/${config.clientId}/token`;
+            revokeMethod = 'DELETE';
+            const auth = Buffer.from(`${config.clientId}:${config.clientSecret}`).toString('base64');
+            revokeHeaders['Authorization'] = `Basic ${auth}`;
+            revokeBody = { access_token: connectedAccount.accessToken };
+            break;
+
+          case 'google':
+          case 'youtube':
+            // Google/YouTube: POST to revoke endpoint
+            revokeUrl = `https://oauth2.googleapis.com/revoke?token=${connectedAccount.accessToken}`;
+            break;
+
+          case 'linkedin':
+            // LinkedIn doesn't have a revoke endpoint, token expires naturally
+            console.log('LinkedIn does not support token revocation');
+            break;
+
+          case 'twitter':
+            // Twitter OAuth 2.0: POST to revoke endpoint
+            revokeUrl = 'https://api.twitter.com/2/oauth2/revoke';
+            const twitterAuth = Buffer.from(`${config.clientId}:${config.clientSecret}`).toString('base64');
+            revokeHeaders['Authorization'] = `Basic ${twitterAuth}`;
+            revokeBody = {
+              token: connectedAccount.accessToken,
+              token_type_hint: 'access_token',
+            };
+            break;
+
+          default:
+            console.log(`No revocation endpoint configured for ${platform}`);
+        }
+
+        // Attempt to revoke the token
+        if (revokeUrl) {
+          const revokeResponse = await fetch(revokeUrl, {
+            method: revokeMethod,
+            headers: revokeHeaders,
+            body: Object.keys(revokeBody).length > 0
+              ? new URLSearchParams(revokeBody)
+              : undefined,
+          });
+
+          if (!revokeResponse.ok) {
+            console.error(`Failed to revoke ${platform} token:`, await revokeResponse.text());
+            // Continue with disconnect even if revocation fails
+          } else {
+            console.log(`✅ Successfully revoked ${platform} token`);
+          }
+        }
+      } catch (error) {
+        console.error(`Error revoking ${platform} token:`, error);
+        // Continue with disconnect even if revocation fails
+      }
+    }
+
+    // Delete the connected account
+    await storage.deleteConnectedAccount(connectedAccount.id);
+
+    // Delete associated social links
+    await storage.deleteSocialLinksByPlatform(profileId, platform);
+
+    res.json({ message: 'Account disconnected successfully', platform });
+  } catch (error: any) {
+    console.error('Disconnect error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 export default router;

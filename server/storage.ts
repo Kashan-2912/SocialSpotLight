@@ -27,6 +27,8 @@ export interface IStorage {
   getSocialLink(id: string): Promise<SocialLink | undefined>;
   createSocialLink(link: InsertSocialLink): Promise<SocialLink>;
   updateSocialLink(id: string, link: Partial<InsertSocialLink>): Promise<SocialLink | undefined>;
+  deleteSocialLink(id: string): Promise<void>;
+  deleteSocialLinksByPlatform(profileId: string, platform: string): Promise<void>;
   incrementLinkClick(linkId: string): Promise<void>;
 
   createPageView(view: InsertPageView): Promise<PageView>;
@@ -131,6 +133,16 @@ export class MemStorage implements IStorage {
     const updated = { ...link, ...updates };
     this.socialLinks.set(id, updated);
     return updated;
+  }
+
+  async deleteSocialLink(id: string): Promise<void> {
+    this.socialLinks.delete(id);
+  }
+
+  async deleteSocialLinksByPlatform(profileId: string, platform: string): Promise<void> {
+    const links = await this.getSocialLinks(profileId);
+    const platformLinks = links.filter(link => link.platform === platform);
+    platformLinks.forEach(link => this.socialLinks.delete(link.id));
   }
 
   async incrementLinkClick(linkId: string): Promise<void> {
