@@ -357,12 +357,15 @@ router.get('/auth/:platform/callback', async (req: Request, res: Response) => {
         break;
       case 'youtube':
         // Use channel URL if channel exists, otherwise just youtube.com
+        console.log('YouTube accountId for URL generation:', accountId);
         if (accountId && accountId.startsWith('UC')) {
           // accountId is a YouTube channel ID (starts with UC)
           platformUrl = `https://youtube.com/channel/${accountId}`;
+          console.log('Generated YouTube channel URL:', platformUrl);
         } else {
           // No channel exists, use base YouTube URL
           platformUrl = 'https://youtube.com';
+          console.log('No valid channel ID, using youtube.com');
         }
         break;
     }
