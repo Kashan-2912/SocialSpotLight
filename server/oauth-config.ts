@@ -20,13 +20,10 @@ export const OAUTH_CONFIGS: Record<string, OAuthConfig> = {
     clientId: process.env.INSTAGRAM_CLIENT_ID || '',
     clientSecret: process.env.INSTAGRAM_CLIENT_SECRET || '',
     redirectUri: `${BASE_URL}/api/auth/instagram/callback`,
-    authUrl: 'https://www.facebook.com/v18.0/dialog/oauth',
-    tokenUrl: 'https://graph.facebook.com/v18.0/oauth/access_token',
-    scopes: ['instagram_basic', 'instagram_manage_insights'],
-    userInfoUrl: 'https://graph.facebook.com/me',
-    additionalAuthParams: {
-      config_id: process.env.INSTAGRAM_CONFIG_ID || '',
-    },
+    authUrl: 'https://www.facebook.com/v19.0/dialog/oauth',
+    tokenUrl: 'https://graph.facebook.com/v19.0/oauth/access_token',
+    scopes: ['instagram_basic', 'pages_show_list', 'pages_read_engagement'],
+    userInfoUrl: 'https://graph.facebook.com/v19.0/me/accounts?fields=instagram_business_account{username,profile_picture_url}',
   },
   twitter: {
     clientId: process.env.TWITTER_CLIENT_ID || '',

@@ -168,12 +168,15 @@ router.get('/auth/:platform/callback', async (req: Request, res: Response) => {
       Accept: 'application/json',
     };
 
-    // GitHub requires Basic auth in headers
-    if (platform === 'github') {
+    // GitHub and Twitter require Basic auth in headers
+    if (platform === 'github' || platform === 'twitter') {
       const auth = Buffer.from(
         `${config.clientId}:${config.clientSecret}`
       ).toString('base64');
       tokenHeaders['Authorization'] = `Basic ${auth}`;
+      // For Basic auth, don't include client_id and client_secret in body
+      delete tokenBody.client_id;
+      delete tokenBody.client_secret;
     }
 
     const tokenResponse = await fetch(config.tokenUrl, {
