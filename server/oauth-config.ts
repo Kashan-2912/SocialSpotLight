@@ -1,3 +1,5 @@
+// only client ids are sent in URL params not secrets - so our app is secure
+
 import { config } from 'dotenv';
 config();
 
