@@ -1,13 +1,15 @@
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { motion } from "framer-motion";
+import ProfileEditDialog from "./ProfileEditDialog";
+import type { Profile } from "@shared/schema";
 
 interface ProfileHeaderProps {
-  name: string;
-  bio?: string;
-  avatarUrl: string;
+  profile: Profile;
 }
 
-export default function ProfileHeader({ name, bio, avatarUrl }: ProfileHeaderProps) {
+export default function ProfileHeader({ profile }: ProfileHeaderProps) {
+  const { name, bio, avatarUrl } = profile;
+
   const initials = name
     .split(" ")
     .map((n) => n[0])
@@ -23,6 +25,8 @@ export default function ProfileHeader({ name, bio, avatarUrl }: ProfileHeaderPro
         transition={{ duration: 0.5, ease: "easeOut" }}
         className="relative mb-6"
       >
+        {/* Edit Profile Button */}
+        <ProfileEditDialog profile={profile} />
         {/* Glass backdrop for avatar */}
         <div className="absolute inset-0 rounded-full glass-strong scale-110 -z-10" />
 
@@ -44,7 +48,7 @@ export default function ProfileHeader({ name, bio, avatarUrl }: ProfileHeaderPro
         />
 
         <Avatar className="w-28 h-28 md:w-32 md:h-32 ring-4 ring-background shadow-2xl">
-          <AvatarImage src={avatarUrl} alt={name} />
+          <AvatarImage src={avatarUrl || undefined} alt={name} />
           <AvatarFallback className="text-3xl font-bold bg-primary text-primary-foreground">
             {initials}
           </AvatarFallback>
