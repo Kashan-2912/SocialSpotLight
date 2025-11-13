@@ -67,6 +67,14 @@ export const connectedAccounts = pgTable("connected_accounts", {
   connectedAt: timestamp("connected_at").notNull().defaultNow(),
 });
 
+export const followerHistory = pgTable("follower_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  profileId: varchar("profile_id").notNull(),
+  platform: text("platform").notNull(),
+  followerCount: integer("follower_count").notNull(),
+  timestamp: timestamp("timestamp").notNull().defaultNow(),
+});
+
 export const insertProfileSchema = createInsertSchema(profiles).omit({
   id: true,
 });
@@ -91,6 +99,11 @@ export const insertConnectedAccountSchema = createInsertSchema(connectedAccounts
   connectedAt: true,
 });
 
+export const insertFollowerHistorySchema = createInsertSchema(followerHistory).omit({
+  id: true,
+  timestamp: true,
+});
+
 export type InsertProfile = z.infer<typeof insertProfileSchema>;
 export type Profile = typeof profiles.$inferSelect;
 export type InsertSocialLink = z.infer<typeof insertSocialLinkSchema>;
@@ -101,3 +114,5 @@ export type InsertLinkClick = z.infer<typeof insertLinkClickSchema>;
 export type LinkClick = typeof linkClicks.$inferSelect;
 export type InsertConnectedAccount = z.infer<typeof insertConnectedAccountSchema>;
 export type ConnectedAccount = typeof connectedAccounts.$inferSelect;
+export type InsertFollowerHistory = z.infer<typeof insertFollowerHistorySchema>;
+export type FollowerHistory = typeof followerHistory.$inferSelect;

@@ -44,6 +44,19 @@ export interface IStorage {
   createConnectedAccount(account: InsertConnectedAccount): Promise<ConnectedAccount>;
   updateConnectedAccount(id: string, account: Partial<InsertConnectedAccount>): Promise<ConnectedAccount | undefined>;
   deleteConnectedAccount(id: string): Promise<void>;
+
+  // Follower history methods
+  createFollowerHistory(entry: { profileId: string; platform: string; followerCount: number }): Promise<void>;
+  getLatestFollowerCount(profileId: string, platform: string): Promise<number | null>;
+  getPreviousFollowerCount(profileId: string, platform: string): Promise<number | null>;
+}
+
+interface FollowerHistoryEntry {
+  id: string;
+  profileId: string;
+  platform: string;
+  followerCount: number;
+  timestamp: Date;
 }
 
 export class MemStorage implements IStorage {
@@ -53,6 +66,7 @@ export class MemStorage implements IStorage {
   public pageViews: Map<string, PageView>;
   public linkClicks: Map<string, LinkClick>;
   public connectedAccounts: Map<string, ConnectedAccount>;
+  public followerHistory: Map<string, FollowerHistoryEntry>;
 
   constructor() {
     this.users = new Map();
@@ -61,6 +75,7 @@ export class MemStorage implements IStorage {
     this.pageViews = new Map();
     this.linkClicks = new Map();
     this.connectedAccounts = new Map();
+    this.followerHistory = new Map();
   }
 
   async getUser(id: string): Promise<User | undefined> {
@@ -257,6 +272,34 @@ export class MemStorage implements IStorage {
 
   async deleteConnectedAccount(id: string): Promise<void> {
     this.connectedAccounts.delete(id);
+  }
+
+  // Follower history methods
+  async createFollowerHistory(entry: { profileId: string; platform: string; followerCount: number }): Promise<void> {
+    const id = randomUUID();
+    const historyEntry: FollowerHistoryEntry = {
+      ...entry,
+      id,
+      timestamp: new Date(),
+    };
+    this.followerHistory.set(id, historyEntry);
+  }
+
+  async getLatestFollowerCount(profileId: string, platform: string): Promise<number | null> {
+    const entries = Array.from(this.followerHistory.values())
+      .filter((entry) => entry.profileId === profileId && entry.platform === platform)
+      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+
+    return entries.length > 0 ? entries[0].followerCount : null;
+  }
+
+  async getPreviousFollowerCount(profileId: string, platform: string): Promise<number | null> {
+    const entries = Array.from(this.followerHistory.values())
+      .filter((entry) => entry.profileId === profileId && entry.platform === platform)
+      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+
+    // Return the second most recent entry (if exists)
+    return entries.length > 1 ? entries[1].followerCount : null;
   }
 }
 

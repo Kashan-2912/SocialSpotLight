@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from 'express';
-import { storage } from './storage';
+import { dbStorage as storage } from './db-storage';
 import { getOAuthConfig } from './oauth-config';
 import { randomUUID, createHash } from 'crypto';
 

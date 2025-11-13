@@ -1,6 +1,6 @@
 import type { Express, Request } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
+import { dbStorage as storage } from "./db-storage";
 import {
   insertProfileSchema,
   insertSocialLinkSchema,
@@ -9,6 +9,8 @@ import {
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import oauthRoutes from "./oauth-routes";
+import aiRoutes from "./ai-routes";
+import uploadRoutes from "./upload-routes";
 
 function getVisitorId(req: Request): string {
   let visitorId = req.cookies?.visitorId;
@@ -29,6 +31,12 @@ function getClientIp(req: Request): string {
 export async function registerRoutes(app: Express): Promise<Server> {
   // Register OAuth routes
   app.use('/api', oauthRoutes);
+
+  // Register AI routes
+  app.use('/api/ai', aiRoutes);
+
+  // Register upload routes
+  app.use('/api', uploadRoutes);
 
   app.get("/api/profile/:id", async (req, res) => {
     try {
@@ -324,9 +332,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
               followerCount = 0;
           }
 
+          // Store in follower history
+          await storage.createFollowerHistory({
+            profileId,
+            platform: account.platform,
+            followerCount,
+          });
+
+          // Calculate growth based on historical data
+          const previousCount = await storage.getPreviousFollowerCount(profileId, account.platform);
+          let growth = 0;
+
+          if (previousCount !== null && previousCount > 0) {
+            growth = ((followerCount - previousCount) / previousCount) * 100;
+          }
+
           stats[account.platform] = {
             count: followerCount,
-            growth: Math.random() * 15 - 2.5, // Random growth for now, would need historical data
+            growth: Math.round(growth * 10) / 10, // Round to 1 decimal place
           };
         } catch (error) {
           console.error(`Failed to fetch stats for ${account.platform}:`, error);

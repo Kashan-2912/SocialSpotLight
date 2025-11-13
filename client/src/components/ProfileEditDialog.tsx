@@ -63,30 +63,28 @@ export default function ProfileEditDialog({ profile }: ProfileEditDialogProps) {
   const generateAIBio = async () => {
     setIsGeneratingBio(true);
     try {
-      // Simulate AI generation (you can replace with actual AI API call)
-      const bioTemplates = [
-        `${name} | Digital Creator & Social Media Enthusiast | Building connections across platforms 🚀`,
-        `Hey! I'm ${name} 👋 Sharing my journey and connecting with amazing people worldwide 🌍`,
-        `${name} - Content Creator | Lifestyle & Tech | Let's connect and grow together ✨`,
-        `${name} | Passionate about creativity and innovation | Join me on this digital adventure 🎨`,
-        `Welcome! I'm ${name} - here to inspire, create, and share meaningful content 💫`,
-      ];
+      const response = await fetch('/api/ai/generate-bio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
 
-      // Random selection for demo (replace with actual AI API)
-      const randomBio = bioTemplates[Math.floor(Math.random() * bioTemplates.length)];
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate bio');
+      }
 
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      setBio(randomBio);
+      const data = await response.json();
+      setBio(data.bio);
       toast({
         title: "✨ AI Bio Generated!",
-        description: "Feel free to customize it further",
+        description: "Powered by Gemini AI - feel free to customize it",
       });
-    } catch (error) {
+    } catch (error: any) {
+      console.error('AI Bio generation error:', error);
       toast({
         title: "Error",
-        description: "Failed to generate bio",
+        description: error.message || "Failed to generate bio. Check if Gemini API key is configured.",
         variant: "destructive",
       });
     } finally {
@@ -108,11 +106,11 @@ export default function ProfileEditDialog({ profile }: ProfileEditDialogProps) {
       return;
     }
 
-    // Validate file size (max 2MB)
-    if (file.size > 2 * 1024 * 1024) {
+    // Validate file size (max 5MB for Cloudinary upload)
+    if (file.size > 5 * 1024 * 1024) {
       toast({
         title: "File too large",
-        description: "Image must be less than 2MB",
+        description: "Image must be less than 5MB",
         variant: "destructive",
       });
       return;
@@ -120,31 +118,49 @@ export default function ProfileEditDialog({ profile }: ProfileEditDialogProps) {
 
     setIsUploadingImage(true);
     try {
-      // Convert to base64
+      // Convert to base64 for upload
       const reader = new FileReader();
-      reader.onloadend = () => {
+      reader.onloadend = async () => {
         const base64String = reader.result as string;
-        setAvatarUrl(base64String);
+
+        // Upload to Cloudinary
+        const response = await fetch('/api/upload-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: base64String }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to upload image');
+        }
+
+        const data = await response.json();
+        setAvatarUrl(data.url);
+
         toast({
           title: "Image uploaded!",
-          description: "Your profile picture has been updated",
+          description: "Your profile picture has been uploaded to cloud storage",
         });
+        setIsUploadingImage(false);
       };
+
       reader.onerror = () => {
         toast({
           title: "Upload failed",
           description: "Failed to read image file",
           variant: "destructive",
         });
+        setIsUploadingImage(false);
       };
+
       reader.readAsDataURL(file);
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Upload failed",
-        description: "Something went wrong",
+        description: error.message || "Something went wrong",
         variant: "destructive",
       });
-    } finally {
       setIsUploadingImage(false);
     }
   };
@@ -249,7 +265,7 @@ export default function ProfileEditDialog({ profile }: ProfileEditDialogProps) {
                 />
               </div>
               <p className="text-xs text-muted-foreground">
-                Upload an image (max 2MB) - JPG, PNG, or GIF
+                Upload an image (max 5MB) - JPG, PNG, or GIF. Uploaded to cloud storage.
               </p>
             </div>
           </div>
