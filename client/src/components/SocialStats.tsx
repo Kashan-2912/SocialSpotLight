@@ -1,6 +1,5 @@
 import { CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Users, TrendingUp, AlertCircle, Loader2 } from "lucide-react";
+import { Users, AlertCircle, Loader2, ArrowUp, ArrowDown } from "lucide-react";
 import { motion } from "framer-motion";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import ConnectAccountsDialog from "./ConnectAccountsDialog";
@@ -98,15 +97,23 @@ export default function SocialStats({ profileId }: SocialStatsProps) {
                       {data.count.toLocaleString()}
                     </motion.div>
                     {data.growth !== 0 && (
-                      <Badge
-                        variant="secondary"
-                        className={`flex items-center gap-1 glass ${
-                          data.growth > 0 ? 'text-green-500' : 'text-red-500'
+                      <motion.div
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ delay: index * 0.1 + 0.3, type: "spring" }}
+                        className={`flex items-center gap-1 px-2 py-1 rounded-full ${
+                          data.growth > 0
+                            ? 'bg-green-500/10 text-green-500'
+                            : 'bg-red-500/10 text-red-500'
                         }`}
                       >
-                        <TrendingUp className={`h-3 w-3 ${data.growth > 0 ? 'text-green-500' : 'text-red-500 rotate-180'}`} />
-                        <span className="font-semibold">{Math.abs(data.growth).toFixed(1)}%</span>
-                      </Badge>
+                        {data.growth > 0 ? (
+                          <ArrowUp className="h-3.5 w-3.5 font-bold" />
+                        ) : (
+                          <ArrowDown className="h-3.5 w-3.5 font-bold" />
+                        )}
+                        <span className="text-xs font-bold">{Math.abs(data.growth).toFixed(1)}%</span>
+                      </motion.div>
                     )}
                   </div>
                 </motion.div>
