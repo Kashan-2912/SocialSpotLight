@@ -5,20 +5,22 @@ import ThemeToggle from "@/components/ThemeToggle";
 import QRCodeDialog from "@/components/QRCodeDialog";
 import AnimatedBackground from "@/components/AnimatedBackground";
 import { Button } from "@/components/ui/button";
-import { BarChart3 } from "lucide-react";
+import { BarChart3, LogOut } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { apiRequest } from "@/lib/queryClient";
 import type { Profile, SocialLink } from "@shared/schema";
-import { Link } from "wouter";
+import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-
-const PROFILE_ID = "default-profile";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function Home() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { profile: userProfile, signOut } = useAuth();
+
+  const PROFILE_ID = userProfile?.id || "";
 
   const { data: profile, isLoading: profileLoading } = useQuery<Profile>({
     queryKey: ["/api/profile", PROFILE_ID],
@@ -129,12 +131,21 @@ export default function Home() {
       >
         <div className="glass p-1 rounded-2xl flex items-center gap-1">
           <QRCodeDialog url={currentUrl} title={profile.name} />
-          <Link href="/analytics">
+          <Link to="/analytics">
             <Button variant="ghost" size="icon" className="hover-elevate" data-testid="button-analytics">
               <BarChart3 className="h-5 w-5" />
             </Button>
           </Link>
           <ThemeToggle />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="hover-elevate text-destructive hover:text-destructive"
+            onClick={signOut}
+            title="Sign Out"
+          >
+            <LogOut className="h-5 w-5" />
+          </Button>
         </div>
       </motion.div>
 

@@ -11,6 +11,7 @@ import { randomUUID } from "crypto";
 import oauthRoutes from "./oauth-routes";
 import aiRoutes from "./ai-routes";
 import uploadRoutes from "./upload-routes";
+import authRoutes from "./auth-routes";
 
 function getVisitorId(req: Request): string {
   let visitorId = req.cookies?.visitorId;
@@ -29,6 +30,9 @@ function getClientIp(req: Request): string {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Register auth routes
+  app.use('/api/auth', authRoutes);
+
   // Register OAuth routes
   app.use('/api', oauthRoutes);
 
@@ -113,22 +117,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const visitorId = getVisitorId(req);
       const ipAddress = getClientIp(req);
       const userAgent = req.headers["user-agent"] || null;
+      const { profileId } = req.body;
 
-      const validatedData = insertPageViewSchema.parse({
-        ...req.body,
-        visitorId,
-        ipAddress,
-        userAgent,
-      });
+      // Check if this visitor viewed this profile in the last 30 minutes
+      // This prevents duplicate entries from page refreshes
+      const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+      const recentViews = await storage.getPageViews(
+        profileId,
+        thirtyMinutesAgo,
+        new Date()
+      );
 
-      const pageView = await storage.createPageView(validatedData);
-      
+      const hasRecentView = recentViews.some(
+        view => view.visitorId === visitorId
+      );
+
+      // Only track if no recent view from same visitor
+      if (!hasRecentView) {
+        const validatedData = insertPageViewSchema.parse({
+          ...req.body,
+          visitorId,
+          ipAddress,
+          userAgent,
+        });
+
+        const pageView = await storage.createPageView(validatedData);
+
+        res.cookie("visitorId", visitorId, {
+          maxAge: 365 * 24 * 60 * 60 * 1000,
+          httpOnly: true,
+        });
+
+        return res.status(201).json(pageView);
+      }
+
+      // Return success but don't create duplicate
       res.cookie("visitorId", visitorId, {
         maxAge: 365 * 24 * 60 * 60 * 1000,
         httpOnly: true,
       });
-      
-      res.status(201).json(pageView);
+
+      res.status(200).json({ message: "View already tracked recently" });
     } catch (error) {
       res.status(400).json({ error: "Failed to track page view" });
     }
@@ -141,7 +170,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userAgent = req.headers["user-agent"] || null;
 
       const { linkId } = req.body;
-      
+
       const link = await storage.getSocialLink(linkId);
       if (!link) {
         return res.status(404).json({ error: "Link not found" });
@@ -151,18 +180,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(410).json({ error: "Link has expired" });
       }
 
-      await storage.incrementLinkClick(linkId);
+      // Check for duplicate clicks within the last 5 seconds (prevents accidental double-clicks)
+      const fiveSecondsAgo = new Date(Date.now() - 5 * 1000);
+      const recentClicks = await storage.getLinkClicks(linkId, fiveSecondsAgo, new Date());
 
-      const validatedData = insertLinkClickSchema.parse({
-        linkId,
-        visitorId,
-        ipAddress,
-        userAgent,
-      });
+      const hasRecentClick = recentClicks.some(
+        click => click.visitorId === visitorId
+      );
 
-      const linkClick = await storage.createLinkClick(validatedData);
-      
-      res.status(201).json(linkClick);
+      // Only track if no recent click from same visitor
+      if (!hasRecentClick) {
+        await storage.incrementLinkClick(linkId);
+
+        const validatedData = insertLinkClickSchema.parse({
+          linkId,
+          visitorId,
+          ipAddress,
+          userAgent,
+        });
+
+        const linkClick = await storage.createLinkClick(validatedData);
+
+        return res.status(201).json(linkClick);
+      }
+
+      // Return success but don't create duplicate
+      res.status(200).json({ message: "Click already tracked recently" });
     } catch (error) {
       res.status(400).json({ error: "Failed to track link click" });
     }
